@@ -131,6 +131,59 @@ def make_trend(df):
         height=350, width=450,
     )
 
+# 4b) Explicit vs non-explicit over time
+def make_explicit_trend(df):
+    if df.empty:
+        return df.hvplot.line().opts(title="No data for selected filters")
+    
+    yearly_explicit = (
+        df.groupby(["year", "explicit"])
+          .size()
+          .reset_index(name="track_count")
+    )
+    
+    # Make explicit a string, so it's categorical not boolean
+    yearly_explicit["explicit_str"] = yearly_explicit["explicit"].astype(str)
+    
+    return yearly_explicit.hvplot.line(
+        x="year",
+        y="track_count",
+        by="explicit_str",
+        xlabel="Year",
+        ylabel="Number of tracks",
+        title="Explicit vs Non-Explicit Tracks Over Time",
+        height=350,
+        width=450,
+    )
+
+explicit_trend = pn.bind(make_explicit_trend, df=filtered)
+
+
+# 4c) Explicitness vs track popularity
+def make_explicit_popularity(df):
+    if df.empty:
+        return df.hvplot.bar().opts(title="No data for selected filters")
+    
+    explicit_mean = (
+        df.groupby("explicit")["track_popularity"]
+          .mean()
+          .reset_index()
+    )
+    
+    # Again, use a string for the x-axis
+    explicit_mean["explicit_str"] = explicit_mean["explicit"].astype(str)
+    
+    return explicit_mean.hvplot.bar(
+        x="explicit_str",
+        y="track_popularity",
+        xlabel="Explicit",
+        ylabel="Avg track popularity",
+        title="Average Track Popularity by Explicit Flag",
+        height=350,
+        width=450,
+    )
+
+explicit_popularity = pn.bind(make_explicit_popularity, df=filtered)
 
 trend = pn.bind(make_trend, df=filtered)
 
@@ -151,11 +204,10 @@ controls = pn.Column("## Filters", genre_widget, year_slider)
 plots = pn.Column(
     pn.Row(scatter, bar),
     pn.Row(duration_box, trend),
+    pn.Row(explicit_trend, explicit_popularity),
     pn.Row(top_table_pane),
 )
 
 dashboard = pn.Row(controls, plots)
 
-if __name__ == "__main__":
-    pn.serve(dashboard, show=True)
-
+dashboard.servable()
